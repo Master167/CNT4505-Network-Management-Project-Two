@@ -1,4 +1,4 @@
-//package serverside;
+package serverside;
 
 import java.io.*;
 import java.net.*;
@@ -25,8 +25,7 @@ public class ServerSide {
         //declarations
         
         ServerSocket serverSocket = null;
-        Socket clientSocket = null;
-        String command;
+        ArrayList<ServerThread> threads = new ArrayList<ServerThread>();
         
         //Server socket
         try {
@@ -38,56 +37,32 @@ public class ServerSide {
         }
         
         try {
+            ServerThread tempThread;
             boolean running = true;
             while (running) {
-                //open I/O stream
-                clientSocket = serverSocket.accept();
-                System.out.println("Client Accepted");
-                PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
-                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-
-                //listen for client commands
+                running = false;
+                // Create Server Thread
+                tempThread = new ServerThread(serverSocket.accept());
+                tempThread.start();
+                threads.add(tempThread);
                 
-                while(!clientSocket.isClosed() && ((command = in.readLine()) != null)) {
-                    System.out.println(command);
-                    
-                    if (command.equals("exit")) {
-                       System.out.println("Exiting.");
-                       running = false;
-                       break;
-                    }
-                    
-                    else {
-                       try {
-                          Runtime rt = Runtime.getRuntime();
-                          Process pr = rt.exec(command);
-         
-                          BufferedReader input = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-         
-                          String line = null;
-                          while ((line = input.readLine()) != null) {
-                             System.out.println(line);
-                             out.println(line);
-                          }
-                          
-                          out.close();
-                          System.out.println("Done with process");         
-                          pr.waitFor();
-                       } 
-                    
-                       catch (Exception e) {
-                          System.out.println("Runtime Catch");
-                          System.out.println(e.toString());
-                       }                  
+                // Iterate through all threads in ArrayList
+                for (int i = 0; i < threads.size(); i++) {
+                    tempThread = threads.get(i);
+                    // Check if it's done executing
+                    if (!tempThread.isAlive()) {
+                        // Check if the exit command was sent
+                        running = tempThread.isKeepServerGoing();
+                        // Remove from ArrayList
+                        threads.remove(i);
                     }
                 }
+                
             }
         }
-        
-        catch (IOException e) {
-           System.out.println(e);
+        catch (IOException ex) {
+            ex.printStackTrace(System.out);
         }
-        
     }//end main 
   
 }//end class ServerSide-----------------------------------------------
